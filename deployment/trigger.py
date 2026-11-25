@@ -1,5 +1,6 @@
 """Submit one immutable checkout image and wait for its recorded decision."""
 
+import hashlib
 import json
 import os
 import sys
@@ -16,7 +17,8 @@ def run():
     scenario = os.getenv("RG_SCENARIO", "healthy")
     expected = os.getenv("RG_EXPECTED_STATUS", "promoted")
     # A retried job observing the same source and artifact gets the same decision.
-    key = os.getenv("RG_REQUEST_ID", f"{scenario}:{commit}:{digest.rsplit(':', 1)[-1]}")
+    identity = json.dumps([scenario, commit, digest], separators=(",", ":")).encode()
+    key = os.getenv("RG_REQUEST_ID", "ci-" + hashlib.sha256(identity).hexdigest())
     headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
     deadline = time.monotonic() + 45
     while True:

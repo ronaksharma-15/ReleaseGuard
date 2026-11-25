@@ -9,6 +9,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 import re
 import sqlite3
+import sys
 from threading import Lock, Thread
 import time
 from urllib.error import URLError
@@ -237,15 +238,16 @@ class Controller:
                     return
             check_ready(self.runtime.router_url, r["candidate_version"])
             self.event(r, "canary", "Full-traffic observation passed. Committing the candidate as stable.")
-            self.runtime.promote()
             new_stable = {"version": r["candidate_version"], "digest": r["candidate_digest"],
                           "scenario": r["scenario"], "commit_sha": r["commit_sha"]}
             at = now()
             msg = "Candidate promoted after behavior checks and full-traffic observation passed."
-            r.update(status="promoted", summary=msg, updated_at=at)
-            r["events"].append({"at": at, "status": "promoted", "message": msg})
+            accepted = {**r, "status": "promoted", "summary": msg, "updated_at": at,
+                        "events": [*r["events"], {"at": at, "status": "promoted", "message": msg}]}
             with self.lock:
-                self.store.write(r, stable=new_stable)
+                self.store.write(accepted, stable=new_stable)
+                # The verified 100% route already serves the new stable. Only rotate slot names here.
+                self.runtime.promote()
         except Exception as exc:
             self.rollback(r, f"Release interrupted ({type(exc).__name__}).")
 
@@ -305,7 +307,11 @@ class Controller:
 
     def rollback(self, r, reason, inconclusive=False):
         started = now()
-        self.event(r, "rolling_back", reason + " Restoring the recorded stable version.", target=0)
+        try:
+            self.event(r, "rolling_back", reason + " Restoring the recorded stable version.", target=0)
+        except (OSError, sqlite3.Error) as exc:
+            # A failed evidence write must still let us restore the last committed stable route.
+            print(f"Could not persist rollback intent ({type(exc).__name__}). Restoring stable traffic.", file=sys.stderr)
         try:
             self.runtime.route(0)
             r["traffic"] = 0

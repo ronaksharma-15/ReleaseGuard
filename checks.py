@@ -179,31 +179,38 @@ def measure_window(router_url, stable_url, stable_version, candidate_version, po
     limit_ms = float(policy.get("candidate_p95_limit_ms", 200))
     payload = _fixture(_CASES[0])["input"]
     started_at, start = _utc(), time.monotonic()
+    deadline = float(policy.get("deadline_monotonic", math.inf))
 
-    def send(index):
-        # Spread request starts through the configured window. Slow responses
-        # naturally limit concurrency and may extend the final observation.
-        delay = start + seconds * index / max(1, count - 1) - time.monotonic()
+    def send(url, scheduled_at):
+        if scheduled_at >= deadline:
+            return None
+        delay = scheduled_at - time.monotonic()
         if delay > 0:
             time.sleep(delay)
-        return _request(router_url, payload, "synthetic", timeout)
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            return None
+        return _request(url, payload, "synthetic", min(timeout, remaining))
+
+    def send_routed(index):
+        return send(router_url, start + seconds * index / max(1, count - 1))
 
     with ThreadPoolExecutor(max_workers=concurrency) as pool:
-        routed = list(pool.map(send, range(count)))
+        routed = [r for r in pool.map(send_routed, range(count)) if r is not None]
         stable = [r for r in routed if r["version"] == stable_version]
         candidate = [r for r in routed if r["version"] == candidate_version]
         unknown = count - len(candidate) - len(stable)
         baseline_count = baseline_unknown = 0
-        if not stable:
+        if not stable and time.monotonic() < deadline:
             # Full rollout has no stable traffic. Keep comparison probes out of exposure.
-            baseline = list(pool.map(lambda _: _request(stable_url, payload, "synthetic", timeout),
-                                     range(min(count, 6))))
-            stable = [r for r in baseline if r["version"] == stable_version]
+            baseline = list(pool.map(lambda _: send(stable_url, time.monotonic()), range(min(count, 6))))
+            stable = [r for r in baseline if r is not None and r["version"] == stable_version]
             baseline_count = len(stable)
             baseline_unknown = len(baseline) - baseline_count
     breaches = [r["observed_at"] for r in candidate if r["status"] != 200
                 or not isinstance(r["body"], dict) or r["latency_ms"] > limit_ms]
     return {"started_at": started_at, "finished_at": _utc(), "duration_ms": round((time.monotonic() - start) * 1000),
-            "workload": "synthetic", "routed_requests": count, "unknown_count": unknown,
+            "workload": "synthetic", "routed_requests": len(routed), "planned_requests": count,
+            "skipped_requests": count - len(routed), "unknown_count": unknown,
             "baseline_unknown_count": baseline_unknown, "candidate": _stats(candidate),
             "stable": _stats(stable, baseline_count), "first_breach_at": min(breaches, default=None)}

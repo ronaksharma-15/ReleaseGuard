@@ -114,8 +114,6 @@ class LocalRuntime:
 
     def promote(self):
         with self._lock:
-            if self._percent != 100:
-                raise RuntimeError("Candidate has not received full traffic")
             self._stable, self._candidate = self._candidate, self._stable
             self._percent, self._position = 0, 0
 

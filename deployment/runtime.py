@@ -87,7 +87,7 @@ class ComposeRuntime:
             verify_version(self.router_url, self.candidate_version)
 
     def promote(self):
-        self.route(100)
+        # The controller already confirmed the 100% route before committing the new stable.
         self.stable_slot = self.candidate_slot
         self.stable_version = self.candidate_version
         self.candidate_version = None

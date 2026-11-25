@@ -7,6 +7,13 @@ A checkout can respond with HTTP 200 and still charge the wrong amount. ReleaseG
 
 ## Run the hackathon demo
 
+To use another laptop, download the `hackathon/releaseguard-demo` branch from GitHub or run these commands.
+
+```sh
+git clone --branch hackathon/releaseguard-demo https://github.com/ronaksharma-15/ReleaseGuard.git
+cd ReleaseGuard
+```
+
 On Windows, double-click **start-demo.cmd**. On Windows, macOS or Linux with **Python 3.10+**, you can also run the following in the project folder.
 
 ```sh

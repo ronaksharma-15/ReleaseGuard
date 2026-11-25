@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0c1217">
+  <title>ReleaseGuard · Release console</title>
+  <link rel="icon" href="/shield.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/style.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <header class="mast"><div class="mast-in">
+    <a href="/" class="brand"><img src="/shield.svg" width="34" height="36" alt="">Release<span>Guard</span></a>
+    <div class="team">Team Ravenrebels</div>
+    <div class="env"><span id="linkLight" class="light"></span><span id="environment">Connecting</span></div>
+  </div></header>
+  <main>
+    <div class="heading"><div><div class="eyebrow">Deployment control</div><h1>Release console</h1></div><button id="newRelease" type="button" class="primary" disabled><b aria-hidden="true">+</b> New release</button></div>
+    <div id="notice" role="status" hidden></div>
+    <div id="screen" aria-busy="true"><section class="panel waiting"><h2>Connecting to the controller…</h2></section></div>
+  </main>
+  <dialog id="launcher" aria-labelledby="dialogTitle">
+    <form method="dialog"><button class="close" aria-label="Close">×</button></form>
+    <div class="eyebrow">Synthetic checkout</div><h2 id="dialogTitle">Launch a release</h2>
+    <p class="explain">Choose a candidate to run against the stable checkout API.</p>
+    <div id="scenarios"></div>
+    <p id="launchError" role="alert" class="error"></p>
+  </dialog>
+  <noscript>Enable JavaScript to view release evidence and run the demo.</noscript>
+</body>
+</html>

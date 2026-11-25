@@ -2,6 +2,10 @@
 
 The Linux runtime keeps two stateless checkout containers and an NGINX router ready on one x86-64 VM. A FastAPI controller saves decisions in SQLite. The controller requests fixed slot and routing operations through a Unix socket. Docker access stays with a small host service. Use the local launcher in the project README for an offline presentation.
 
+## Run the demo with GitHub alone
+
+Push a branch named `hackathon/releaseguard-demo` to a repository with Actions enabled. Open the **ReleaseGuard** run in Actions to see the verification job exercise all three scenarios on a temporary Linux runner. The job summary shows the decisions, and the **releaseguard-evidence** artifact contains measured windows, fixtures and timestamps for 14 days. The runner shuts down when the job finishes.
+
 ## Publish the first image
 
 1. Put the project in a GitHub repository with a `main` branch and GitHub Actions enabled. Leave the repository variable `RG_DEPLOY_ENABLED` unset during bootstrap.
@@ -51,7 +55,7 @@ Open [the dashboard](http://127.0.0.1:8787). Run the local demo on a different p
 
 ## Enable push-to-VM deployment
 
-In GitHub, create the environment `hackathon-vm`. Limit it to `main`. Protect the branch and set any desired review rules. Set these values:
+In GitHub, create the environment `hackathon-vm`. Limit it to `main`. Protect the branch and configure the environment with the following settings.
 
 | Location | Name | Value |
 | --- | --- | --- |

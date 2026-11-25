@@ -1,4 +1,5 @@
 import json
+import sqlite3
 from tempfile import TemporaryDirectory
 import unittest
 from unittest.mock import patch
@@ -106,6 +107,22 @@ class ReleasePolicyTest(unittest.TestCase):
         self.assertEqual((restored["status"], restored["traffic"]), ("recovered", 0))
         self.assertEqual(restored["recovery"]["sample"]["candidate"]["version"], row["stable_version"])
         self.assertIsNone(self.controller.state()["active_id"])
+
+    def test_promotion_write_failure_routes_to_previous_stable(self):
+        write = self.controller.store.write
+
+        def fail_promotion(release, **settings):
+            if "stable" in settings:
+                raise sqlite3.OperationalError("Simulated commit failure")
+            return write(release, **settings)
+
+        stable = self.controller.state()["stable"]
+        with patch.object(self.controller.store, "write", side_effect=fail_promotion):
+            row = self.run_demo("healthy", "commit-failure")
+        self.assertEqual(row["status"], "recovered")
+        self.assertEqual(row["recovery"]["sample"]["candidate"]["version"], stable["version"])
+        self.assertEqual(self.controller.state()["stable"], stable)
+        self.assertNotIn("promoted", [event["status"] for event in row["events"]])
 
 
 if __name__ == "__main__":
