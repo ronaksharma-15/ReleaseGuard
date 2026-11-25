@@ -1,0 +1,66 @@
+name: releaseguard
+
+x-slot: &slot
+  restart: unless-stopped
+  command: ["python", "checkout.py"]
+  read_only: true
+  cap_drop: [ALL]
+  security_opt: [no-new-privileges:true]
+  healthcheck:
+    test: ["CMD", "python", "-c", "from urllib.request import urlopen; urlopen('http://127.0.0.1:8001/health', timeout=2).read()"]
+    interval: 3s
+    timeout: 3s
+    retries: 8
+    start_period: 5s
+
+services:
+  blue:
+    <<: *slot
+    image: ${RG_BLUE_DIGEST:-${RG_STABLE_DIGEST:?set initial image}}
+    environment:
+      HOST: 0.0.0.0
+      PORT: "8001"
+      VERSION: ${RG_BLUE_VERSION:-${RG_STABLE_VERSION:?set initial version}}
+      SCENARIO: ${RG_BLUE_SCENARIO:-healthy}
+  green:
+    <<: *slot
+    image: ${RG_GREEN_DIGEST:-${RG_STABLE_DIGEST:?set initial image}}
+    environment:
+      HOST: 0.0.0.0
+      PORT: "8001"
+      VERSION: ${RG_GREEN_VERSION:-${RG_STABLE_VERSION:?set initial version}}
+      SCENARIO: ${RG_GREEN_SCENARIO:-healthy}
+  router:
+    image: nginx:stable-alpine
+    restart: unless-stopped
+    depends_on:
+      blue: {condition: service_healthy}
+      green: {condition: service_healthy}
+    ports: ["8080:8080"]
+    volumes:
+      - /var/lib/releaseguard-agent/nginx:/etc/nginx/conf.d:ro
+  controller:
+    build:
+      context: .
+      target: controller
+    restart: unless-stopped
+    depends_on:
+      router: {condition: service_started}
+    ports: ["127.0.0.1:8787:8787"]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    environment:
+      RG_MODE: compose
+      RG_BIND: 0.0.0.0
+      RG_PORT: "8787"
+      RG_DATA_DIR: /data
+      RG_DEPLOY_TOKEN: ${RG_DEPLOY_TOKEN:?configure an API token}
+      RG_IMAGE_REPOSITORY: ${RG_IMAGE_REPOSITORY:?set approved repository}
+      RG_STABLE_DIGEST: ${RG_STABLE_DIGEST:?set initial image}
+      RG_STABLE_VERSION: ${RG_STABLE_VERSION:?set initial version}
+      RG_STABLE_COMMIT: ${RG_STABLE_COMMIT:?set initial commit}
+    volumes:
+      - controller-data:/data
+      - /run/releaseguard:/run/releaseguard:ro
+volumes:
+  controller-data:

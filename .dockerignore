@@ -1,0 +1,7 @@
+**
+!*.py
+!web
+!web/**
+!deployment
+!deployment/requirements.txt
+!deployment/runtime.py
