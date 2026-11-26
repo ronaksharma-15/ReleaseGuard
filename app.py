@@ -46,14 +46,19 @@ def authorize(controller, headers, client):
             raise APIError(401, "A deployment token is required")
 
 
-def dispatch(controller, method, target, raw_headers, body, client):
+def dispatch(controller, method, target, raw_headers, body, client, *, public_demo=False):
     headers = {k.lower(): v for k, v in raw_headers.items()}
     path = urlsplit(target).path
     try:
+        if public_demo and method != "GET":
+            raise APIError(403, "The public demo is read-only")
         if method == "GET" and path == "/health":
             return json_reply(200, {"ok": True, "mode": controller.mode})
         if method == "GET" and path == "/api/state":
-            return json_reply(200, controller.state())
+            state = controller.state()
+            if public_demo:
+                state["public_demo"] = True
+            return json_reply(200, state)
         if method == "GET" and (m := re.fullmatch(r"/api/releases/([a-z0-9]+)", path)):
             record = controller.store.get(m[1])
             if record is None:
@@ -106,7 +111,8 @@ class Handler(BaseHTTPRequestHandler):
             self.send_error(413)
             return
         status, headers, body = dispatch(self.server.controller, self.command, self.path, self.headers,
-                                         self.rfile.read(length) if length else b"", self.client_address[0])
+                                         self.rfile.read(length) if length else b"", self.client_address[0],
+                                         public_demo=self.server.public_demo)
         self.send_response(status)
         for key, value in headers.items():
             self.send_header(key, value)
@@ -125,25 +131,50 @@ class Handler(BaseHTTPRequestHandler):
         pass
 
 
+def prepare_public_demo(controller):
+    """Record the three synthetic runs for visitors to replay."""
+    for scenario, expected in (("wrong_total", "blocked"), ("slow", "recovered"), ("healthy", "promoted")):
+        release, created = controller.submit({"scenario": scenario, "request_id": f"public-demo-{scenario}"})
+        if created:
+            controller.thread.join()
+            release = controller.store.get(release["id"])
+        if release["status"] != expected:
+            raise RuntimeError(f"Public demo scenario {scenario} ended as {release['status']}, expected {expected}")
+
+
 def main():
     parser = argparse.ArgumentParser(description="ReleaseGuard local dashboard")
     parser.add_argument("--port", type=int, default=int(os.getenv("RG_PORT", 8787)))
     parser.add_argument("--data-dir", type=Path, default=None)
     parser.add_argument("--open", action="store_true", help="open the dashboard in the default browser")
+    parser.add_argument("--public-demo", action="store_true", help="serve recorded synthetic runs read-only")
     args = parser.parse_args()
     host = os.getenv("RG_BIND", "127.0.0.1")
     with ThreadingHTTPServer((host, args.port), Handler) as server:
-        server.controller = Controller(args.data_dir)
-        print(f"ReleaseGuard is ready at http://{host}:{server.server_port}", flush=True)
-        if args.open:
+        server.public_demo = args.public_demo
+        if args.public_demo:
+            # Create a separate history so only synthetic public runs are exposed.
+            from tempfile import TemporaryDirectory
+            with TemporaryDirectory(prefix="releaseguard-public-") as directory:
+                serve(server, directory, args.open)
+        else:
+            serve(server, args.data_dir, args.open)
+
+
+def serve(server, data_dir, open_browser):
+    server.controller = Controller(data_dir, mode="local" if server.public_demo else None)
+    try:
+        if server.public_demo:
+            prepare_public_demo(server.controller)
+        print(f"ReleaseGuard is ready at http://{server.server_address[0]}:{server.server_port}", flush=True)
+        if open_browser:
             import webbrowser
             webbrowser.open(f"http://127.0.0.1:{server.server_port}/")
-        try:
-            server.serve_forever()
-        except KeyboardInterrupt:
-            pass
-        finally:
-            server.controller.close()
+        server.serve_forever()
+    except KeyboardInterrupt:
+        pass
+    finally:
+        server.controller.close()
 
 
 if __name__ == "__main__":

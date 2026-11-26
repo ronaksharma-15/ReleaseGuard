@@ -376,13 +376,15 @@ function render() {
     snapshot = key;
   }
   $("environment").textContent = connected
-    ? model.mode === "compose"
+    ? model.public_demo
+      ? "Public demo · Replay only"
+      : model.mode === "compose"
       ? "Cloud · Compose"
       : "Local controller connected"
     : "Controller disconnected";
   $("linkLight").classList.toggle("online", connected);
   $("screen").setAttribute("aria-busy", "false");
-  $("newRelease").hidden = model.mode !== "local";
+  $("newRelease").hidden = model.public_demo || model.mode !== "local";
   $("newRelease").disabled =
     !connected ||
     busy ||

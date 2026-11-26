@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: releaseguard
+    runtime: python
+    plan: free
+    branch: main
+    buildCommand: python -m compileall -q app.py
+    startCommand: python app.py --public-demo --port "$PORT"
+    healthCheckPath: /health
+    envVars:
+      - key: RG_BIND
+        value: "0.0.0.0"

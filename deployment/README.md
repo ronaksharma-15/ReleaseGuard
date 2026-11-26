@@ -1,5 +1,15 @@
 # Run ReleaseGuard on one cloud VM
 
+## Free hosted demo on Render
+
+In the [Render dashboard](https://dashboard.render.com/), choose **New → Blueprint**, connect the GitHub repository, select `main`, and deploy the service defined in `render.yaml`. Its Free Web Service runs the Python demo. It records fresh Prevent, Recover, and Release results when the process starts, so visitors can replay all three after a restart. Release controls are available in the offline launcher and VM deployment.
+
+Once the Render URL works, open **Settings → Custom Domains**, add the hostname assigned by your event, and copy Render's DNS record instructions to the domain provider. If the event controls DNS for your hostname, send the record details to the organizers. Verify the hostname in Render and open it over HTTPS. [Render custom domain guide](https://render.com/docs/custom-domains)
+
+Render Free sleeps after 15 minutes without traffic and loses local SQLite data on restart. The demo regenerates its sample runs on wake. Wait for the dashboard before presenting. [Render Free limits](https://render.com/docs/free)
+
+The rest of this guide covers the Docker Compose VM setup, including optional deployments from GitHub Actions.
+
 The Linux runtime keeps two stateless checkout containers and an NGINX router ready on one x86-64 VM. A FastAPI controller saves decisions in SQLite. The controller requests fixed slot and routing operations through a Unix socket. Docker access stays with a small host service. Use the local launcher in the project README for an offline presentation.
 
 ## Run the demo with GitHub alone
