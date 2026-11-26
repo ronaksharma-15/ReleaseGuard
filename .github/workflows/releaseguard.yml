@@ -13,9 +13,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with: {persist-credentials: false}
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with: {python-version: "3.12"}
       - name: Run controller and behavior tests
         run: python -m unittest discover -s tests -v
@@ -38,7 +38,7 @@ jobs:
           fi
       - name: Save release evidence
         if: ${{ !cancelled() }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: releaseguard-evidence
           path: ${{ runner.temp }}/releaseguard-evidence.json
@@ -54,7 +54,7 @@ jobs:
     outputs:
       digest: ${{ steps.build.outputs.digest }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with: {persist-credentials: false}
       - name: Sign in to GHCR
         env:
@@ -80,7 +80,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with: {persist-credentials: false}
       - name: Submit release over an authenticated SSH tunnel
         env:
