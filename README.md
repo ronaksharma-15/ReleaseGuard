@@ -32,6 +32,18 @@ Open **http://127.0.0.1:8787/**. The local demo uses two real checkout HTTP serv
 
 Use the on-screen measurements when presenting detection and recovery times. Latency, sample counts on NGINX, and timing depend on the machine and workload. Only the synthetic quote endpoint is exercised. No orders or payments are created.
 
+### Present a release at your own pace
+
+After a run finishes, choose **Replay walkthrough**. It starts paused at candidate preparation. Use **Next** and **Back** to explain each step, or **Play** with a 6-second, 3.5-second or 1.8-second pace. The step buttons and keyboard-accessible slider jump directly to recorded milestones; **Summary** returns to the completed result.
+
+Replay reads saved evidence and never changes deployment timing or traffic. Its metrics reveal only the evidence available through the selected step. The final outcome stays labeled separately, and **Complete release evidence** always contains the full run.
+
+- **Prevent:** compare expected, stable and candidate prices, including their HTTP status.
+- **Recover:** compare latency against the policy limit, inspect both breach windows, then step through restoration and the six recovery checks.
+- **Release:** follow the latency lines across the 10%, 50% and two 100% observation windows.
+
+Charts use measured values. The horizontal latency axis shows observation windows in sequence, not elapsed seconds. Fewer than four windows use grouped bars; longer runs use lines. Direct stable comparison probes are excluded from routed exposure. Filter the release history by outcome and use **Export evidence** to download the selected run as JSON.
+
 ## How decisions work
 
 - **Behavior.** Twenty-four fixed baskets cover amounts, discount bounds, rounding and response structure. Both services must match the expected version and contract. Each failed case records the input, both responses and the broken rule.
@@ -54,6 +66,12 @@ The GitHub Actions workflow runs tests and exercises Docker, NGINX and all three
 
 ```sh
 python -m unittest discover -s tests -v
+```
+
+The dashboard's evidence-projection tests run with Node.js 18 or newer (Node is only needed for these tests, not to run the demo):
+
+```sh
+node --test tests/test_story.mjs
 ```
 
 The tests cover wrong prices, routing identity, missing samples, repeated triggers, failed recovery, promotion after rollback and SQLite persistence. The real-HTTP tests need permission to connect to localhost.
